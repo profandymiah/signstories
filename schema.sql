@@ -230,3 +230,26 @@ create policy "media upload own folder" on storage.objects for insert to authent
   with check (bucket_id = 'media' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "media delete own or moderator" on storage.objects for delete to authenticated
   using (bucket_id = 'media' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_moderator()));
+
+-- ---------------------------------------------------------------
+-- Posting without an account (Supabase anonymous sign-ins)
+-- Turn on: Authentication > Sign In / Providers > Allow anonymous sign-ins
+-- ---------------------------------------------------------------
+alter table public.profiles add column if not exists anonymous boolean not null default false;
+
+create or replace function public.set_profile_anonymous()
+returns trigger language plpgsql security definer set search_path = public
+as $$
+begin
+  new.anonymous := coalesce((auth.jwt()->>'is_anonymous')::boolean, false);
+  return new;
+end $$;
+revoke execute on function public.set_profile_anonymous() from public, anon, authenticated;
+
+create trigger profiles_anonymous before insert or update on public.profiles
+  for each row execute function public.set_profile_anonymous();
+
+-- Confirmations need an email account.
+drop policy if exists "confirmations own add" on public.confirmations;
+create policy "confirmations own add" on public.confirmations for insert to authenticated
+  with check (user_id = auth.uid() and not coalesce((auth.jwt()->>'is_anonymous')::boolean, false));

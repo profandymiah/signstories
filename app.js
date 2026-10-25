@@ -27,7 +27,7 @@ function h(tag, attrs, ...kids){
 const configured = CFG.SUPABASE_URL && !CFG.SUPABASE_URL.startsWith("PASTE") && window.supabase;
 const sb = configured ? window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY) : null;
 
-let session=null, meId=null, profile=null, isMod=false, loading=true;
+let session=null, meId=null, profile=null, isMod=false, isAnon=false, loading=true;
 let signs=[], versions=[], stories=[], reviews={}, counts={}, mine={}, people={};
 let view="home", currentSignId=null, query="", armed=null;
 let deck=[], deckPos=0, revealed=false;
@@ -85,13 +85,14 @@ async function loadAll(){
   }
   const ids=[...new Set([...signs,...versions,...stories].map(x=>x.created_by).filter(id=>id && !people[id]))];
   if(ids.length){
-    const pr=await sb.from("profiles").select("id,display_name,signer_is").in("id",ids);
+    const pr=await sb.from("profiles").select("id,display_name,signer_is,anonymous").in("id",ids);
     (pr.data||[]).forEach(p=>people[p.id]=p);
   }
   loading=false; render();
 }
 async function loadMe(){
   meId = session ? session.user.id : null;
+  isAnon = !!(session && session.user.is_anonymous);
   profile=null; isMod=false;
   if(meId){
     const [p,m]=await Promise.all([
@@ -103,7 +104,7 @@ async function loadMe(){
   updateAuthUi();
 }
 function updateAuthUi(){
-  $("#authBtn").textContent = session ? "Sign out" : "Sign in";
+  $("#authBtn").textContent = !session ? "Sign in" : isAnon ? "Add your email" : "Sign out";
   $("#tab-moderate").hidden = !isMod;
   if(!isMod && view==="moderate") view="home";
 }
@@ -144,7 +145,11 @@ function doRender(){
 }
 const approved = x => x.status==="approved";
 function countFor(type,id){ return counts[type+":"+id]||0; }
-function personName(id){ if(id && id===meId) return "You"; return (people[id] && people[id].display_name) || "A contributor"; }
+function personName(id){
+  if(id && id===meId) return "You";
+  const p=people[id]; if(!p) return "A contributor";
+  return p.anonymous ? `${p.display_name||"Anonymous"} (no account)` : (p.display_name || "A contributor");
+}
 function storiesFor(id){ return stories.filter(s=>s.sign_id===id && s.status!=="hidden").sort((a,b)=>(reviews[b.id]?1:0)-(reviews[a.id]?1:0) || countFor("story",b.id)-countFor("story",a.id) || (b.created_at||"").localeCompare(a.created_at||"")); }
 function versionsFor(id){
   const inline=k=>k==="video"||k==="image"?1:0;
@@ -255,7 +260,7 @@ function confirmBtn(type,item,label){
   const text = n===1 ? "Confirmed by 1 signer" : `Confirmed by ${n} signers`;
   if(item.status!=="approved") return null;
   if(own) return h("span",{class:"confirm",title:"You can't confirm your own post",text:n?"✓ "+text:"Not yet confirmed"});
-  return h("button",{class:"confirm",type:"button","aria-pressed":String(on),title:label,onclick:()=>requirePoster(()=>toggleVote(type,item))},
+  return h("button",{class:"confirm",type:"button","aria-pressed":String(on),title:label,onclick:()=>requireEmail(()=>toggleVote(type,item))},
     on ? `✓ You confirmed · ${n}` : `✓ ${label}${n?" · "+n:""}`);
 }
 function renderVersion(v,isTop){
@@ -387,18 +392,43 @@ $("#addSignBtn").addEventListener("click",()=>requirePoster(openSignDialog));
 $("#heroAdd").addEventListener("click",()=>requirePoster(openQuickDialog));
 
 /* ---------- Sign-in ---------- */
-let afterProfile=null;
+let afterProfile=null, pendingFn=null;
 function requirePoster(fn){
   if(!sb){ setStatus("This site isn't connected to its database yet."); return; }
-  if(!session){ openAuthDialog(); return; }
+  if(!session){ pendingFn=fn; openAuthDialog("post"); return; }
   if(!canPost()){ afterProfile=fn; openProfileDialog(); return; }
   fn();
 }
-function openAuthDialog(){ $("#authForm").reset(); $("#authMsg").textContent=""; $("#authDialog").showModal(); }
+function requireEmail(fn){
+  if(!sb) return;
+  if(!session || isAnon){ pendingFn=null; openAuthDialog("confirm"); return; }
+  if(!canPost()){ afterProfile=fn; openProfileDialog(); return; }
+  fn();
+}
+function openAuthDialog(mode){
+  $("#authForm").reset(); $("#authMsg").textContent="";
+  const anonPossible = mode==="post";
+  $("#anonChoice").hidden = !anonPossible;
+  $("#authTitle").textContent = mode==="confirm" ? "Sign in to confirm" : isAnon ? "Add your email" : mode==="post" ? "How would you like to post?" : "Sign in";
+  $("#authIntro").textContent = mode==="confirm"
+    ? "Confirmations count one per person, so confirming needs an email sign-in. We'll send you a link; there's no password."
+    : isAnon ? "Add your email to keep control of what you've posted from any device, and to confirm other people's posts."
+    : "Sign in with your email and we'll send you a link; there's no password. Signing in lets you remove your posts later and confirm what you recognise.";
+  if(!$("#authDialog").open) $("#authDialog").showModal();
+}
+$("#anonBtn").addEventListener("click",async()=>{
+  const msg=$("#authMsg"), btn=$("#anonBtn");
+  btn.disabled=true; msg.dataset.tone="info"; msg.textContent="One moment…";
+  afterProfile=pendingFn; pendingFn=null;
+  const { error } = await sb.auth.signInAnonymously();
+  btn.disabled=false;
+  if(error){ afterProfile=null; msg.dataset.tone=""; msg.textContent = /disabled|not enabled/i.test(error.message) ? "Posting without an account isn't switched on yet. Please sign in with your email for now." : "That didn't work. Try again in a moment."; return; }
+  $("#authDialog").close();
+});
 $("#authBtn").addEventListener("click",async()=>{
   if(!sb) return;
-  if(session){ await sb.auth.signOut(); session=null; await loadMe(); await loadAll(); setStatus("You've signed out.","info"); }
-  else openAuthDialog();
+  if(session && !isAnon){ await sb.auth.signOut(); session=null; await loadMe(); await loadAll(); setStatus("You've signed out.","info"); }
+  else openAuthDialog(isAnon ? "upgrade" : "signin");
 });
 const redirectTo = () => location.origin + location.pathname;
 $("#authForm").addEventListener("submit",async e=>{
@@ -407,14 +437,19 @@ $("#authForm").addEventListener("submit",async e=>{
   msg.dataset.tone="";
   if(!/^\S+@\S+\.\S+$/.test(email)){ msg.textContent="Enter a full email address."; return; }
   btn.disabled=true; msg.dataset.tone="info"; msg.textContent="Sending…";
-  const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirectTo() } });
+  const { error } = isAnon
+    ? await sb.auth.updateUser({ email }, { emailRedirectTo: redirectTo() })
+    : await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: redirectTo() } });
   btn.disabled=false;
-  if(error){ msg.dataset.tone=""; msg.textContent = /rate/i.test(error.message) ? "Too many sign-in emails have been sent. Wait a few minutes and try again." : "The email couldn't be sent. Check the address and try again."; return; }
-  msg.textContent=`Check ${email} for a sign-in link. You can close this window.`;
+  if(error){ msg.dataset.tone=""; msg.textContent = /rate/i.test(error.message) ? "Too many sign-in emails have been sent. Wait a few minutes and try again." : /already/i.test(error.message) ? "That email already has an account. Sign out of this browser's anonymous session first, then sign in with it." : "The email couldn't be sent. Check the address and try again."; return; }
+  msg.textContent = isAnon ? `Check ${email} and click the link to confirm it. Everything you've posted stays yours.` : `Check ${email} for a sign-in link. You can close this window.`;
 });
 $("#googleBtn").addEventListener("click",()=>sb.auth.signInWithOAuth({provider:"google",options:{redirectTo:redirectTo()}}));
 function openProfileDialog(){
   $("#profileMsg").textContent="";
+  $("#pNameLabel").textContent = isAnon ? "Name to show (optional)" : "Name to show";
+  $("#pName").required = !isAnon;
+  if($("#profileDialog").open) return;
   $("#pName").value = profile ? profile.display_name : "";
   $("#pSigner").value = profile ? profile.signer_is : "";
   $("#pOver16").checked = !!(profile && profile.over_16);
@@ -422,7 +457,8 @@ function openProfileDialog(){
 }
 $("#profileForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  const msg=$("#profileMsg"), name=$("#pName").value.trim();
+  const msg=$("#profileMsg"); let name=$("#pName").value.trim();
+  if(!name && isAnon) name="Anonymous";
   if(!name){ msg.textContent="Add the name you'd like shown."; return; }
   if(!$("#pOver16").checked){ msg.textContent="You need to be 16 or over to post."; return; }
   $("#profileSubmit").disabled=true;

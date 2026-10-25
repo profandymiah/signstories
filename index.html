@@ -235,6 +235,9 @@ img{max-width:100%}
 .modlist{display:grid;gap:14px;max-width:760px}
 .moditem{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:10px;min-width:0}
 .moditem h3{font-size:1.05rem}
+.anon-choice{display:grid;gap:10px;justify-items:start}
+.or{margin:4px 0 0;width:100%;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
+.or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -512,8 +515,13 @@ img{max-width:100%}
 
 <dialog id="authDialog">
   <form id="authForm" method="dialog">
-    <h2>Sign in to take part</h2>
-    <p class="sub" style="margin:0">Anyone can read the stories. To add a sign, post a video or confirm what you recognise, sign in with your email. We'll send you a link; there's no password.</p>
+    <h2 id="authTitle">Sign in</h2>
+    <div id="anonChoice" class="anon-choice">
+      <button class="btn primary" type="button" id="anonBtn">Post without an account</button>
+      <p class="sub" style="margin:0">Your post is checked before it appears. You won't be able to remove it yourself later, and you can add your email at any time.</p>
+      <p class="or"><span>or sign in with email</span></p>
+    </div>
+    <p class="sub" style="margin:0" id="authIntro">Sign in with your email and we'll send you a link; there's no password.</p>
     <div class="field">
       <label for="aEmail">Email address</label>
       <input id="aEmail" type="text" inputmode="email" autocomplete="email" required placeholder="you@example.com">
@@ -532,7 +540,7 @@ img{max-width:100%}
     <h2>About you</h2>
     <p class="sub" style="margin:0">Your name is shown with everything you share, so readers know whose experience it is.</p>
     <div class="field">
-      <label for="pName">Name to show</label>
+      <label for="pName" id="pNameLabel">Name to show</label>
       <input id="pName" type="text" required maxlength="60" autocomplete="name">
     </div>
     <div class="field">
