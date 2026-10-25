@@ -190,6 +190,23 @@ function versionMedia(v){
 }
 function pendingBadge(x){ return x.status==="pending" ? h("span",{class:"badge pending",text:"Awaiting approval"}) : null; }
 
+function consensus(signId){
+  const st=stories.filter(x=>x.sign_id===signId && x.status==="approved");
+  const total=st.reduce((a,x)=>a+countFor("story",x.id),0);
+  if(!st.length) return null;
+  const top=[...st].sort((a,b)=>countFor("story",b.id)-countFor("story",a.id))[0];
+  const n=countFor("story",top.id), share=total?n/total:0;
+  let level, label;
+  if(total<3){ level="none"; label="Not enough confirmations yet"; }
+  else if(share>=0.7 && n>=5){ level="strong"; label="Strong agreement"; }
+  else if(share>=0.5){ level="lean"; label="Most people recognise one explanation"; }
+  else { level="mixed"; label="Mixed views"; }
+  return {top,n,total,share,level,label,count:st.length};
+}
+function signConfirmations(signId){
+  return versions.filter(v=>v.sign_id===signId).reduce((a,v)=>a+countFor("version",v.id),0)
+       + stories.filter(x=>x.sign_id===signId).reduce((a,x)=>a+countFor("story",x.id),0);
+}
 function hasVideo(signId){ return versions.some(v=>v.sign_id===signId && v.status!=="hidden" && (v.kind==="video" || (v.kind==="link" && v.url))) || stories.some(x=>x.sign_id===signId && x.status!=="hidden" && (x.video_path||x.link)); }
 function cardThumb(vs){
   const v=vs.find(x=>x.kind==="video"&&x.media_path) || vs.find(x=>x.kind==="link"&&x.url) || vs.find(x=>x.kind==="image"&&x.media_path);
@@ -213,7 +230,7 @@ function signCard(s){
       h("span",{text: vs.length===1 ? "1 version" : `${vs.length} versions`}),
       h("span",{text: st.length===1 ? "1 story" : `${st.length} stories`}),
       kinds.length ? h("span",{class:"dots"}, kinds.map(k=>h("i",{class:"dot "+KINDS[k].cls,title:KINDS[k].label}))) : null),
-    conf ? h("span",{class:"meta",text:`✓ Top version confirmed by ${conf}`}) : null,
+    (()=>{ const t=signConfirmations(s.id); return h("span",{class:"meta",text: t ? `✓ ${t} confirmation${t===1?"":"s"}` : "Not yet confirmed"}); })(),
     s.status==="pending" ? h("span",{class:"meta"},pendingBadge(s)) : null);
 }
 
@@ -239,7 +256,13 @@ function renderBrowse(){
   const list = signs.filter(s=>s.status!=="hidden")
     .filter(s=>!q || [s.gloss,s.meaning,s.region].some(v=>(v||"").toLowerCase().includes(q)))
     .filter(s=>!$("#videoOnly").checked || hasVideo(s.id))
-    .sort((a,b)=>(a.gloss||"").localeCompare(b.gloss||""));
+    .sort((a,b)=>{
+      const mode=$("#sortBy").value;
+      if(mode==="most") return signConfirmations(b.id)-signConfirmations(a.id) || (a.gloss||"").localeCompare(b.gloss||"");
+      if(mode==="needs") return signConfirmations(a.id)-signConfirmations(b.id) || (b.created_at||"").localeCompare(a.created_at||"");
+      if(mode==="new") return (b.created_at||"").localeCompare(a.created_at||"");
+      return (a.gloss||"").localeCompare(b.gloss||"");
+    });
   if(!signs.length) return h("div",{class:"empty"},
     h("h2",{text:"No signs yet"}),
     h("p",{text:"Each sign gets its own page with the versions people sign, and every account of where it comes from."}),
@@ -279,13 +302,23 @@ function renderSign(){
     h("div",{class:"accounts-head"},
       h("h2",{text: st.length ? `Where it comes from · ${st.length} ${st.length===1?"account":"accounts"}` : "Where it comes from"}),
       h("button",{class:"btn primary small",type:"button",onclick:()=>requirePoster(()=>openStoryDialog(s)),text:"Share an account"})),
-    h("p",{class:"sub",text:"Confirm an account if you've heard it too. Accounts that disagree all stay visible."}),
+    h("p",{class:"sub",text:"Confirm an account if you've heard it too. Over time, confirmations show which explanation signers recognise most. Accounts that disagree all stay visible."}),
+    consensusPanel(s.id),
     st.length ? st.map(renderStory) : h("div",{class:"empty"},
       h("p",{text:"No one has shared where this sign comes from yet. If you know a story, a source, or a memory of it changing, add it."})));
 
   return h("div",{class:"detail"}, head, h("div",{class:"section-stack"}, versionsSec, storiesSec));
 }
 
+function consensusPanel(signId){
+  const c=consensus(signId); if(!c) return null;
+  const pct=Math.round(c.share*100);
+  return h("div",{class:"consensus c-"+c.level},
+    h("div",{class:"consensus-head"},h("b",{text:c.label}),
+      h("span",{class:"progress",text: c.total ? `${c.total} confirmation${c.total===1?"":"s"} across ${c.count} account${c.count===1?"":"s"}` : `${c.count} account${c.count===1?"":"s"}, none confirmed yet`})),
+    c.total ? h("div",{class:"bar"},h("i",{style:`width:${pct}%`})) : null,
+    c.total ? h("p",{class:"source",text:`The most recognised account has ${c.n} of ${c.total} confirmations (${pct}%).`}) : h("p",{class:"source",text:"If you've heard one of these explanations, confirm it to help build a picture of what signers recognise."}));
+}
 function footer(x,extra,table){
   const mine = x.created_by===meId;
   return h("div",{class:"storyfoot"},
@@ -319,6 +352,7 @@ function renderStory(x){
     h("div",{class:"badges"},
       h("span",{class:"badge "+k.cls},h("i",{class:"dot"}),k.label),
       rv ? h("span",{class:"badge reviewed",text:"✓ Reviewed by the community panel"}) : null,
+      (()=>{ const c=consensus(x.sign_id); return c && c.top.id===x.id && c.n>0 && c.count>1 ? h("span",{class:"badge reviewed",text:"Most recognised"}) : null; })(),
       pendingBadge(x)),
     x.video_path ? mediaEl("video",x.video_path) : null,
     x.link ? linkMedia(x.link,"Watch the video") : null,
@@ -426,6 +460,7 @@ function renderAbout(){
 function go(v){ view=v; armed=null; if(v!=="practise") revealed=false; render(); window.scrollTo({top:0}); }
 function openSign(id){ currentSignId=id; go("sign"); }
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",e=>{ e.preventDefault(); go(b.dataset.view); }));
+$("#sortBy").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
 $("#videoOnly").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
 $("#search").addEventListener("input",e=>{ query=e.target.value; if(view!=="browse") view="browse"; render(); });
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));

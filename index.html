@@ -247,6 +247,11 @@ img{max-width:100%}
 .thumb .plat{font-family:var(--f-display);font-weight:800;color:var(--accent);font-size:1.1rem}
 .filter{display:inline-flex;gap:8px;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap}
 .filter input{accent-color:var(--accent)}
+.filter select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.consensus{display:grid;gap:8px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
+.consensus-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:baseline}
+.consensus.c-strong{border-color:var(--accent)}
+.consensus.c-mixed{border-color:var(--dis)}
 .anon-choice{display:grid;gap:10px;justify-items:start}
 .or{margin:4px 0 0;width:100%;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
 .or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
@@ -271,6 +276,7 @@ img{max-width:100%}
     </nav>
     <div class="toolbar" id="browseBar" hidden>
       <div class="search"><input id="search" type="text" placeholder="Search signs, meanings or regions" aria-label="Search signs"></div>
+      <label class="filter">Sort <select id="sortBy" aria-label="Sort signs"><option value="az">A–Z</option><option value="most">Most confirmed</option><option value="needs">Needs confirming</option><option value="new">Newest</option></select></label>
       <label class="filter"><input type="checkbox" id="videoOnly"> Only signs with video</label>
       <div class="legend" aria-label="Kinds of account">
         <span class="k-doc"><i class="dot"></i>Documented source</span>
@@ -355,7 +361,7 @@ img{max-width:100%}
         <li><b>Add a sign</b><span>Give its gloss, its meaning and the region where it's used. Regional variants get their own entries.</span></li>
         <li><b>Film it or link it</b><span>Video is best. Upload a short clip, or link a TikTok, Instagram or YouTube video. Images and written descriptions are welcome too.</span></li>
         <li><b>Share where it comes from</b><span>Tell the story in BSL or in writing, and say whether it's documented, a community account, a personal memory or disputed.</span></li>
-        <li><b>Confirm what you recognise</b><span>Signers confirm the versions they use and the stories they've heard. The most trusted rise to the top.</span></li>
+        <li><b>Confirm what you recognise</b><span>Signers confirm the versions they use and the explanations they've heard. Each sign shows how much agreement there is, so a shared picture builds over time.</span></li>
       </ol>
     </section>
 
