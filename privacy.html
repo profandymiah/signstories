@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy and consent · BSL Sign Stories</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,800&display=swap">
+<style>
+:root{--bg:#f3f6f6;--surface:#fff;--ink:#16232a;--muted:#566871;--line:#d6e0e2;--accent:#0d6b5e}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1518;--surface:#162126;--ink:#e4eef0;--muted:#98a9ae;--line:#28363c;--accent:#5ac2b0;color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 "Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;padding:32px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+main{max-width:68ch;margin:0 auto;display:grid;gap:14px}
+h1,h2{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:2.2rem}h2{font-size:1.3rem;margin-top:18px}
+p,ul{margin:0}ul{display:grid;gap:6px;padding-left:1.2em}
+a{color:var(--accent)}
+.muted{color:var(--muted)}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./">← BSL Sign Stories</a></p>
+  <h1>Privacy, consent and removing content</h1>
+  <p class="muted">Last updated October 2026</p>
+
+  <div class="box">
+    <p><b>The short version.</b> You can read everything without an account. If you sign in to post, we keep your email address so you can sign in, and the name you choose so your posts are credited. You can remove your posts at any time, and you can ask for anything about you to be removed.</p>
+  </div>
+
+  <h2>Who runs this site</h2>
+  <p>BSL Sign Stories is a personal, learner-led project run by Andy Miah. Andy is responsible for the information held here. Contact: <span class="contact">see the "Help shape it" section on the home page</span>.</p>
+
+  <h2>What we keep, and why</h2>
+  <ul>
+    <li><b>Your email address</b>, to send you sign-in links. It is never shown on the site.</li>
+    <li><b>The name you choose</b> and, if you give it, <b>how you're sharing</b> (for example, "a Deaf BSL user"). These are shown with your posts so readers know whose experience they reflect.</li>
+    <li><b>Your confirmation that you are 16 or over.</b></li>
+    <li><b>What you post</b>: signs, written stories, links, and any videos or images you upload. These are public once approved.</li>
+    <li><b>Your confirmations.</b> Totals are public. Who confirmed what is not shown.</li>
+  </ul>
+  <p>We use this information only to run the site. We don't sell it, use it for advertising, or share it with anyone except the services listed below.</p>
+
+  <h2>Services we use</h2>
+  <ul>
+    <li><b>Supabase</b> stores the database, sign-in details and uploaded files.</li>
+    <li><b>GitHub Pages</b> hosts the web pages.</li>
+    <li><b>Google Fonts</b> and <b>jsDelivr</b> supply the fonts and a code library, so your browser connects to them when you load a page.</li>
+    <li>Links to TikTok, Instagram, YouTube and other sites take you to those sites, which have their own privacy policies.</li>
+  </ul>
+
+  <h2>Consent</h2>
+  <ul>
+    <li>Only post videos, images or stories that are yours to share. If someone else appears in a video or image, they must have agreed to it being posted.</li>
+    <li>Name signs belong to the people they name. Don't explain someone's name sign without their agreement.</li>
+    <li>You must be 16 or over to post.</li>
+    <li>New posts are checked before they appear publicly.</li>
+  </ul>
+
+  <h2>Removing content</h2>
+  <p>You can remove your own posts at any time from the sign's page. If you appear in something someone else posted, or you want your account and everything you've posted deleted, contact Andy and it will be removed promptly.</p>
+
+  <h2>Your rights</h2>
+  <p>Under UK data protection law you can ask to see the information held about you, correct it, or have it deleted. If you're unhappy with how your information is handled, you can complain to the Information Commissioner's Office at ico.org.uk.</p>
+
+  <h2>How long we keep it</h2>
+  <p>Your account and posts are kept until you remove them or ask for them to be deleted.</p>
+</main>
+<script src="config.js"></script>
+<script>
+  var c = (window.SIGN_STORIES_CONFIG||{}).CONTACT_EMAIL;
+  if (c) { document.querySelectorAll(".contact").forEach(function(el){ el.textContent = ""; var a=document.createElement("a"); a.href="mailto:"+c; a.textContent=c; el.appendChild(a); }); }
+</script>
+</body>
+</html>
