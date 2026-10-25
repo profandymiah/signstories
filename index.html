@@ -235,6 +235,18 @@ img{max-width:100%}
 .modlist{display:grid;gap:14px;max-width:760px}
 .moditem{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:10px;min-width:0}
 .moditem h3{font-size:1.05rem}
+.hero-video{margin:0 0 22px;max-width:56ch;padding:12px 14px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 10px 10px 0}
+.embed{position:relative;width:100%;max-width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--line)}
+.embed.tall{aspect-ratio:9/16;max-width:340px;justify-self:center}
+.embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.embed-wrap{display:grid;gap:6px;min-width:0}
+.embed-src{font-size:.82rem;color:var(--muted);text-decoration:none}
+.thumb{aspect-ratio:16/10;max-width:100%;border-radius:10px;overflow:hidden;background:var(--accent-soft);display:grid;place-items:center;position:relative}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .play{position:absolute;inset:auto auto 8px 8px;background:var(--ink);color:var(--surface);font-size:.75rem;font-weight:700;padding:3px 9px;border-radius:999px}
+.thumb .plat{font-family:var(--f-display);font-weight:800;color:var(--accent);font-size:1.1rem}
+.filter{display:inline-flex;gap:8px;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap}
+.filter input{accent-color:var(--accent)}
 .anon-choice{display:grid;gap:10px;justify-items:start}
 .or{margin:4px 0 0;width:100%;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem}
 .or::before,.or::after{content:"";flex:1;border-top:1px solid var(--line)}
@@ -259,6 +271,7 @@ img{max-width:100%}
     </nav>
     <div class="toolbar" id="browseBar" hidden>
       <div class="search"><input id="search" type="text" placeholder="Search signs, meanings or regions" aria-label="Search signs"></div>
+      <label class="filter"><input type="checkbox" id="videoOnly"> Only signs with video</label>
       <div class="legend" aria-label="Kinds of account">
         <span class="k-doc"><i class="dot"></i>Documented source</span>
         <span class="k-com"><i class="dot"></i>Community account</span>
@@ -275,9 +288,10 @@ img{max-width:100%}
         <p class="eyebrow">A learner's archive of British Sign Language</p>
         <h1 class="hero-title">Every sign has a <em>story</em>.</h1>
         <p class="hero-sub">Why is a sign made the way it is? Who first used it, and how has it changed? BSL Sign Stories collects the answers from the people who know them: Deaf signers, families, teachers and the communities where the signs were born.</p>
+        <p class="hero-video"><b>Video first.</b> A sign is best shown, and its story best told, in BSL. Share a clip from your phone, or a link to a TikTok, Instagram or YouTube video.</p>
         <div class="actions">
-          <button class="btn primary" type="button" data-view="browse">Explore the signs</button>
-          <button class="btn" type="button" id="heroAdd">Share a video link</button>
+          <button class="btn primary" type="button" id="heroAdd">Share a video of a sign</button>
+          <button class="btn" type="button" data-view="browse">Explore the signs</button>
         </div>
       </div>
       <figure class="hero-art">
@@ -339,7 +353,7 @@ img{max-width:100%}
       <h2>How it works</h2>
       <ol class="steps">
         <li><b>Add a sign</b><span>Give its gloss, its meaning and the region where it's used. Regional variants get their own entries.</span></li>
-        <li><b>Show how it's signed</b><span>Upload a video or image, link a video from TikTok, Instagram, YouTube or anywhere else, or describe the handshape and movement.</span></li>
+        <li><b>Film it or link it</b><span>Video is best. Upload a short clip, or link a TikTok, Instagram or YouTube video. Images and written descriptions are welcome too.</span></li>
         <li><b>Share where it comes from</b><span>Tell the story in BSL or in writing, and say whether it's documented, a community account, a personal memory or disputed.</span></li>
         <li><b>Confirm what you recognise</b><span>Signers confirm the versions they use and the stories they've heard. The most trusted rise to the top.</span></li>
       </ol>
@@ -382,7 +396,7 @@ img{max-width:100%}
 
 <dialog id="quickDialog">
   <form id="quickForm" method="dialog">
-    <h2>Share a video link</h2>
+    <h2>Share a video of a sign</h2>
     <p class="sub" style="margin:0">Post a link to a video of a sign, from TikTok, Instagram, YouTube or anywhere else. Add where the sign comes from if you'd like to; it's optional.</p>
     <div class="field">
       <label for="qUrl">Link to the video</label>
@@ -495,7 +509,7 @@ img{max-width:100%}
       </div>
     </fieldset>
     <div class="field" id="tVideoField">
-      <label for="tVideo">Tell it in BSL</label>
+      <label for="tVideo">Tell it in BSL (recommended)</label>
       <input id="tVideo" type="file" accept="video/mp4,video/webm,video/quicktime,video/*">
       <small>A signed account is the best way to share it. MP4 or WebM, under 20 MB.</small>
     </div>

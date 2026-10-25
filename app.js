@@ -60,6 +60,34 @@ function mediaEl(kind,path){
   }
   return mediaCache[key];
 }
+/* Turn a video link into an embedded player where the platform allows it. */
+function embedInfo(url){
+  let u; try{ u=new URL(url); }catch(e){ return null; }
+  const host=u.hostname.replace(/^www\.|^m\./,""), path=u.pathname;
+  let m;
+  if(host==="youtu.be" && (m=path.match(/^\/([\w-]{6,})/))) return {src:`https://www.youtube-nocookie.com/embed/${m[1]}`, tall:false, thumb:`https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg`};
+  if(host.endsWith("youtube.com")){
+    if((m=path.match(/^\/shorts\/([\w-]{6,})/))) return {src:`https://www.youtube-nocookie.com/embed/${m[1]}`, tall:true, thumb:`https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg`};
+    const v=u.searchParams.get("v"); if(v) return {src:`https://www.youtube-nocookie.com/embed/${v}`, tall:false, thumb:`https://i.ytimg.com/vi/${v}/hqdefault.jpg`};
+  }
+  if(host.endsWith("tiktok.com") && (m=path.match(/\/video\/(\d+)/))) return {src:`https://www.tiktok.com/embed/v2/${m[1]}`, tall:true};
+  if(host.endsWith("instagram.com") && (m=path.match(/^\/(p|reel|reels|tv)\/([\w-]+)/))) return {src:`https://www.instagram.com/${m[1]==="p"?"p":"reel"}/${m[2]}/embed`, tall:true};
+  if(host.endsWith("vimeo.com") && (m=path.match(/^\/(\d+)/))) return {src:`https://player.vimeo.com/video/${m[1]}`, tall:false};
+  return null;
+}
+function linkMedia(url, label){
+  const e=embedInfo(url);
+  if(!e) return linkCard(url, label);
+  const key="embed:"+url;
+  if(!mediaCache[key]){
+    const p=platformOf(url)||"the web";
+    mediaCache[key]=h("div",{class:"embed-wrap"},
+      h("div",{class:"embed"+(e.tall?" tall":"")},
+        h("iframe",{src:e.src,title:`Video on ${p}`,loading:"lazy",allow:"autoplay; encrypted-media; picture-in-picture; fullscreen",allowfullscreen:true,referrerpolicy:"strict-origin-when-cross-origin"})),
+      h("a",{class:"embed-src",href:url,target:"_blank",rel:"noopener noreferrer",text:`Open on ${p} ↗`}));
+  }
+  return mediaCache[key];
+}
 function linkCard(url, label){
   const p=platformOf(url)||"the web";
   return h("a",{class:"linkcard",href:url,target:"_blank",rel:"noopener noreferrer"},
@@ -157,16 +185,27 @@ function versionsFor(id){
 }
 function versionMedia(v){
   if((v.kind==="video"||v.kind==="image") && v.media_path) return mediaEl(v.kind,v.media_path);
-  if(v.kind==="link" && v.url) return linkCard(v.url);
+  if(v.kind==="link" && v.url) return linkMedia(v.url);
   return null;
 }
 function pendingBadge(x){ return x.status==="pending" ? h("span",{class:"badge pending",text:"Awaiting approval"}) : null; }
 
+function hasVideo(signId){ return versions.some(v=>v.sign_id===signId && v.status!=="hidden" && (v.kind==="video" || (v.kind==="link" && v.url))) || stories.some(x=>x.sign_id===signId && x.status!=="hidden" && (x.video_path||x.link)); }
+function cardThumb(vs){
+  const v=vs.find(x=>x.kind==="video"&&x.media_path) || vs.find(x=>x.kind==="link"&&x.url) || vs.find(x=>x.kind==="image"&&x.media_path);
+  if(!v) return null;
+  if(v.kind==="image") return h("span",{class:"thumb"},h("img",{src:publicUrl(v.media_path),alt:"",loading:"lazy"}));
+  if(v.kind==="video") return h("span",{class:"thumb"},h("video",{src:publicUrl(v.media_path)+"#t=0.5",muted:true,playsinline:true,preload:"metadata"}),h("span",{class:"play",text:"▶ Video"}));
+  const e=embedInfo(v.url), p=platformOf(v.url)||"Video";
+  if(e && e.thumb) return h("span",{class:"thumb"},h("img",{src:e.thumb,alt:"",loading:"lazy"}),h("span",{class:"play",text:`▶ ${p}`}));
+  return h("span",{class:"thumb"},h("span",{class:"plat",text:p}),h("span",{class:"play",text:"▶ Video"}));
+}
 function signCard(s){
   const st=storiesFor(s.id), vs=versionsFor(s.id);
   const kinds=[...new Set(st.map(x=>x.kind))].filter(k=>KINDS[k]);
   const conf=vs.length?countFor("version",vs[0].id):0;
   return h("button",{class:"card",type:"button",onclick:()=>openSign(s.id)},
+    cardThumb(vs),
     h("span",{class:"gloss",text:s.gloss}),
     s.meaning ? h("p",{class:"meaning",text:s.meaning}) : null,
     h("span",{class:"meta"},
@@ -199,6 +238,7 @@ function renderBrowse(){
   const q=query.trim().toLowerCase();
   const list = signs.filter(s=>s.status!=="hidden")
     .filter(s=>!q || [s.gloss,s.meaning,s.region].some(v=>(v||"").toLowerCase().includes(q)))
+    .filter(s=>!$("#videoOnly").checked || hasVideo(s.id))
     .sort((a,b)=>(a.gloss||"").localeCompare(b.gloss||""));
   if(!signs.length) return h("div",{class:"empty"},
     h("h2",{text:"No signs yet"}),
@@ -281,7 +321,7 @@ function renderStory(x){
       rv ? h("span",{class:"badge reviewed",text:"✓ Reviewed by the community panel"}) : null,
       pendingBadge(x)),
     x.video_path ? mediaEl("video",x.video_path) : null,
-    x.link ? linkCard(x.link,"Watch the video") : null,
+    x.link ? linkMedia(x.link,"Watch the video") : null,
     x.body ? h("p",{class:"text",text:x.body}) : null,
     x.hook ? h("p",{class:"hook"},h("b",{text:"Memory hook"}),x.hook) : null,
     x.source ? h("p",{class:"source",text:"Source: "+x.source}) : null,
@@ -312,7 +352,7 @@ function renderModerate(){
       t==="versions" ? versionMedia(x) : null,
       t==="versions" && x.description ? h("p",{class:"descr",text:x.description}) : null,
       t==="stories" ? h("p",{class:"text",text:x.body||"(video or link only)"}) : null,
-      t==="stories" && x.link ? linkCard(x.link,"Watch the video") : null,
+      t==="stories" && x.link ? linkMedia(x.link,"Watch the video") : null,
       t==="stories" && x.video_path ? mediaEl("video",x.video_path) : null,
       h("p",{class:"source",text:`From ${personName(x.created_by)} · ${fmtDate(x.created_at)}`}),
       h("div",{class:"actions"},
@@ -386,6 +426,7 @@ function renderAbout(){
 function go(v){ view=v; armed=null; if(v!=="practise") revealed=false; render(); window.scrollTo({top:0}); }
 function openSign(id){ currentSignId=id; go("sign"); }
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",e=>{ e.preventDefault(); go(b.dataset.view); }));
+$("#videoOnly").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
 $("#search").addEventListener("input",e=>{ query=e.target.value; if(view!=="browse") view="browse"; render(); });
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
 $("#addSignBtn").addEventListener("click",()=>requirePoster(openSignDialog));
