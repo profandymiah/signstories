@@ -247,6 +247,18 @@ img{max-width:100%}
 .thumb .plat{font-family:var(--f-display);font-weight:800;color:var(--accent);font-size:1.1rem}
 .filter{display:inline-flex;gap:8px;align-items:center;font-size:.9rem;color:var(--muted);white-space:nowrap}
 .filter input{accent-color:var(--accent)}
+.era-row{display:flex;flex-wrap:wrap;gap:8px}
+.era-row select{flex:0 0 auto;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.era-row input{flex:1 1 200px;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+.chip.contested{border-color:var(--dis);color:var(--dis);background:var(--dis-soft)}
+.timeline{display:grid;gap:0;border-left:2px solid var(--line);margin-left:6px}
+.tl-group{display:grid;gap:10px;padding:4px 0 18px 20px;position:relative}
+.tl-group::before{content:"";position:absolute;left:-8px;top:8px;width:14px;height:14px;border-radius:50%;background:var(--accent);border:3px solid var(--bg)}
+.tl-when{font-family:var(--f-gloss);font-weight:600;font-size:.85rem;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.tl-item{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.tl-item .thumb{width:96px;aspect-ratio:4/3}
+.tl-item p{margin:0}
+.tl-kind{font-size:.8rem;font-weight:700;color:var(--muted)}
 .filter select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
 .consensus{display:grid;gap:8px;padding:14px 16px;border-radius:12px;border:1px solid var(--line);background:var(--surface)}
 .consensus-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;align-items:baseline}
@@ -278,6 +290,7 @@ img{max-width:100%}
       <div class="search"><input id="search" type="text" placeholder="Search signs, meanings or regions" aria-label="Search signs"></div>
       <label class="filter">Sort <select id="sortBy" aria-label="Sort signs"><option value="az">A–Z</option><option value="most">Most confirmed</option><option value="needs">Needs confirming</option><option value="new">Newest</option></select></label>
       <label class="filter"><input type="checkbox" id="videoOnly"> Only signs with video</label>
+      <label class="filter"><input type="checkbox" id="contestedOnly"> Only contested</label>
       <div class="legend" aria-label="Kinds of account">
         <span class="k-doc"><i class="dot"></i>Documented source</span>
         <span class="k-com"><i class="dot"></i>Community account</span>
@@ -361,6 +374,7 @@ img{max-width:100%}
         <li><b>Add a sign</b><span>Give its gloss, its meaning and the region where it's used. Regional variants get their own entries.</span></li>
         <li><b>Film it or link it</b><span>Video is best. Upload a short clip, or link a TikTok, Instagram or YouTube video. Images and written descriptions are welcome too.</span></li>
         <li><b>Share where it comes from</b><span>Tell the story in BSL or in writing, and say whether it's documented, a community account, a personal memory or disputed.</span></li>
+        <li><b>Add when it's from</b><span>Say roughly when a version was signed or a story dates from, and each sign builds a timeline of how it has changed.</span></li>
         <li><b>Confirm what you recognise</b><span>Signers confirm the versions they use and the explanations they've heard. Each sign shows how much agreement there is, so a shared picture builds over time.</span></li>
       </ol>
     </section>
@@ -431,6 +445,11 @@ img{max-width:100%}
         <option value="disputed">Disputed: a story others question</option>
       </select>
     </div>
+<div class="field era">
+      <label for="qEra">When is this sign from?</label>
+      <div class="era-row"><select id="qEra" data-era></select><input id="qEraNote" type="text" maxlength="200" placeholder="Where or when, e.g. my school in Manchester, 1960s"></div>
+      <small>Optional. Dates help build a history of how the sign has changed.</small>
+    </div>
     <label class="check"><input type="checkbox" id="qConsent" required><span>This is my video, or the person in it is happy for it to be shared here.</span></label>
     <div class="formfoot">
       <p class="formmsg" id="quickMsg"></p>
@@ -493,6 +512,11 @@ img{max-width:100%}
       <label for="vDesc" id="vDescLabel">Notes</label>
       <textarea id="vDesc" maxlength="2000" placeholder="Handshape, where it's made, the movement, and anything that makes your version different"></textarea>
     </div>
+<div class="field era">
+      <label for="vEra">When was or is it signed this way?</label>
+      <div class="era-row"><select id="vEra" data-era></select><input id="vEraNote" type="text" maxlength="200" placeholder="Where or when, e.g. my school in Manchester, 1960s"></div>
+      <small>Optional. Dates help build a history of how the sign has changed.</small>
+    </div>
     <label class="check"><input type="checkbox" id="vConsent" required><span>This is me signing, or the person shown has agreed to it being shared here.</span></label>
     <div class="formfoot">
       <p class="formmsg" id="versionMsg"></p>
@@ -535,6 +559,11 @@ img{max-width:100%}
     <div class="field">
       <label for="tSource">Source</label>
       <input id="tSource" type="text" maxlength="300" placeholder="e.g. Brien (1992), a Deaf club, a teacher at your school">
+    </div>
+<div class="field era">
+      <label for="tEra">When does this story date from?</label>
+      <div class="era-row"><select id="tEra" data-era></select><input id="tEraNote" type="text" maxlength="200" placeholder="Where or when, e.g. my school in Manchester, 1960s"></div>
+      <small>Optional. Dates help build a history of how the sign has changed.</small>
     </div>
     <label class="check"><input type="checkbox" id="tConsent" required><span>This account is mine to share. If it names or shows other people, or explains someone's name sign, they have agreed to it being shared here.</span></label>
     <div class="formfoot">

@@ -253,3 +253,15 @@ create trigger profiles_anonymous before insert or update on public.profiles
 drop policy if exists "confirmations own add" on public.confirmations;
 create policy "confirmations own add" on public.confirmations for insert to authenticated
   with check (user_id = auth.uid() and not coalesce((auth.jwt()->>'is_anonymous')::boolean, false));
+
+-- ---------------------------------------------------------------
+-- When a version or story is from (for each sign's timeline)
+-- ---------------------------------------------------------------
+alter table public.versions
+  add column if not exists period_start int check (period_start is null or period_start between 1500 and 2100),
+  add column if not exists period_end   int check (period_end   is null or period_end   between 1500 and 2100),
+  add column if not exists period_note  text not null default '' check (char_length(period_note) <= 200);
+alter table public.stories
+  add column if not exists period_start int check (period_start is null or period_start between 1500 and 2100),
+  add column if not exists period_end   int check (period_end   is null or period_end   between 1500 and 2100),
+  add column if not exists period_note  text not null default '' check (char_length(period_note) <= 200);

@@ -207,6 +207,59 @@ function signConfirmations(signId){
   return versions.filter(v=>v.sign_id===signId).reduce((a,v)=>a+countFor("version",v.id),0)
        + stories.filter(x=>x.sign_id===signId).reduce((a,x)=>a+countFor("story",x.id),0);
 }
+/* ---------- Dates and history ---------- */
+const ERAS=[["","Not sure",null,null],["now","In use today",2020,null],["2010s","2010s",2010,2019],["2000s","2000s",2000,2009],["1990s","1990s",1990,1999],["1980s","1980s",1980,1989],["1970s","1970s",1970,1979],["1960s","1960s",1960,1969],["1950s","1950s",1950,1959],["1900-1949","1900–1949",1900,1949],["pre1900","Before 1900",1800,1899]];
+document.querySelectorAll("select[data-era]").forEach(sel=>sel.replaceChildren(...ERAS.map(([v,l])=>h("option",{value:v,text:l}))));
+function eraFields(prefix){
+  const e=ERAS.find(x=>x[0]===$("#"+prefix+"Era").value)||ERAS[0];
+  return {period_start:e[2], period_end:e[3], period_note:$("#"+prefix+"EraNote").value.trim()};
+}
+function periodLabel(x){
+  if(x.period_start==null) return "";
+  const s=x.period_start, e=x.period_end;
+  if(e==null) return s>=2020 ? "Today" : `${s} onwards`;
+  if(e<1900) return "Before 1900";
+  if(e-s===9) return `${s}s`;
+  return `${s}–${e}`;
+}
+function periodChip(x){
+  const l=periodLabel(x); if(!l && !x.period_note) return null;
+  return h("span",{class:"chip",text:[l,x.period_note].filter(Boolean).join(" · ")});
+}
+function isContested(signId){
+  const st=stories.filter(x=>x.sign_id===signId && x.status==="approved");
+  if(st.some(x=>x.kind==="disputed")) return true;
+  const c=consensus(signId);
+  return st.length>=2 && c && c.level==="mixed";
+}
+function timelineSection(signId){
+  const items=[...versions.filter(v=>v.sign_id===signId && v.status!=="hidden").map(v=>["v",v]),
+               ...stories.filter(x=>x.sign_id===signId && x.status!=="hidden").map(x=>["s",x])];
+  if(!items.length) return null;
+  const dated=items.filter(([,x])=>x.period_start!=null).sort((a,b)=>a[1].period_start-b[1].period_start || (a[0]==="v"?-1:1));
+  const head=h("div",{class:"accounts-head"},h("h2",{text:"How this sign has changed"}));
+  if(!dated.length) return h("section",{class:"accounts"},head,
+    h("div",{class:"empty"},h("p",{text:"No dates yet. When you add a version or a story, say roughly when it's from, and a timeline of the sign will build up here."})));
+  const groups=[]; for(const it of dated){ const l=periodLabel(it[1]); const g=groups.find(x=>x.l===l); if(g) g.items.push(it); else groups.push({l,items:[it]}); }
+  return h("section",{class:"accounts"},head,
+    h("p",{class:"sub",text:"Versions and stories placed by when they're from, oldest first. Undated posts appear in the sections above."}),
+    h("div",{class:"timeline"},groups.map(g=>h("div",{class:"tl-group"},
+      h("span",{class:"tl-when",text:g.l}),
+      g.items.map(([t,x])=>{
+        if(t==="v"){
+          const th=cardThumb([x]);
+          return h("div",{class:"tl-item"}, th||h("span",{class:"chip",text:"Written"}),
+            h("div",{},h("p",{class:"tl-kind",text:`Signed like this · ✓ ${countFor("version",x.id)}`}),
+              x.description ? h("p",{text:x.description.slice(0,160)+(x.description.length>160?"…":"")}) : null,
+              x.period_note ? h("p",{class:"source",text:x.period_note}) : null));
+        }
+        const k=KINDS[x.kind]||KINDS.community;
+        return h("div",{class:"tl-item"}, h("span",{class:"badge "+k.cls},h("i",{class:"dot"}),k.label),
+          h("div",{},h("p",{class:"tl-kind",text:`Story · ✓ ${countFor("story",x.id)}`}),
+            h("p",{text:(x.hook||x.body||"Video account").slice(0,180)+((x.hook||x.body||"").length>180?"…":"")}),
+            x.period_note ? h("p",{class:"source",text:x.period_note}) : null));
+      })))));
+}
 function hasVideo(signId){ return versions.some(v=>v.sign_id===signId && v.status!=="hidden" && (v.kind==="video" || (v.kind==="link" && v.url))) || stories.some(x=>x.sign_id===signId && x.status!=="hidden" && (x.video_path||x.link)); }
 function cardThumb(vs){
   const v=vs.find(x=>x.kind==="video"&&x.media_path) || vs.find(x=>x.kind==="link"&&x.url) || vs.find(x=>x.kind==="image"&&x.media_path);
@@ -227,6 +280,7 @@ function signCard(s){
     s.meaning ? h("p",{class:"meaning",text:s.meaning}) : null,
     h("span",{class:"meta"},
       s.region ? h("span",{class:"chip",text:s.region}) : null,
+      isContested(s.id) ? h("span",{class:"chip contested",text:"Contested"}) : null,
       h("span",{text: vs.length===1 ? "1 version" : `${vs.length} versions`}),
       h("span",{text: st.length===1 ? "1 story" : `${st.length} stories`}),
       kinds.length ? h("span",{class:"dots"}, kinds.map(k=>h("i",{class:"dot "+KINDS[k].cls,title:KINDS[k].label}))) : null),
@@ -256,6 +310,7 @@ function renderBrowse(){
   const list = signs.filter(s=>s.status!=="hidden")
     .filter(s=>!q || [s.gloss,s.meaning,s.region].some(v=>(v||"").toLowerCase().includes(q)))
     .filter(s=>!$("#videoOnly").checked || hasVideo(s.id))
+    .filter(s=>!$("#contestedOnly").checked || isContested(s.id))
     .sort((a,b)=>{
       const mode=$("#sortBy").value;
       if(mode==="most") return signConfirmations(b.id)-signConfirmations(a.id) || (a.gloss||"").localeCompare(b.gloss||"");
@@ -279,6 +334,7 @@ function renderSign(){
     h("button",{class:"linkbtn",type:"button",onclick:()=>go("browse"),text:"← All signs"}),
     h("h1",{class:"gloss",text:s.gloss}),
     pendingBadge(s),
+    isContested(s.id) ? h("span",{class:"chip contested",text:"Contested: signers give different explanations"}) : null,
     s.meaning ? h("p",{text:s.meaning}) : null,
     h("div",{class:"meta"},
       s.region ? h("span",{class:"chip",text:s.region}) : null,
@@ -307,7 +363,7 @@ function renderSign(){
     st.length ? st.map(renderStory) : h("div",{class:"empty"},
       h("p",{text:"No one has shared where this sign comes from yet. If you know a story, a source, or a memory of it changing, add it."})));
 
-  return h("div",{class:"detail"}, head, h("div",{class:"section-stack"}, versionsSec, storiesSec));
+  return h("div",{class:"detail"}, head, h("div",{class:"section-stack"}, versionsSec, storiesSec, timelineSection(s.id)));
 }
 
 function consensusPanel(signId){
@@ -339,7 +395,7 @@ function confirmBtn(type,item,label){
 function renderVersion(v,isTop){
   const label={video:"Video",image:"Image",link:platformOf(v.url||"")||"Link",text:"Written description"}[v.kind]||"Version";
   return h("article",{class:"version"+(isTop?" top":"")},
-    h("div",{class:"badges"}, h("span",{class:"chip",text:label}), isTop ? h("span",{class:"badge reviewed",text:"Most confirmed"}) : null, pendingBadge(v)),
+    h("div",{class:"badges"}, h("span",{class:"chip",text:label}), periodChip(v), isTop ? h("span",{class:"badge reviewed",text:"Most confirmed"}) : null, pendingBadge(v)),
     versionMedia(v),
     v.description ? h("p",{class:"descr",text:v.description}) : null,
     h("div",{class:"actions"},confirmBtn("version",v,"I sign it this way")),
@@ -351,6 +407,7 @@ function renderStory(x){
   return h("article",{class:"story"},
     h("div",{class:"badges"},
       h("span",{class:"badge "+k.cls},h("i",{class:"dot"}),k.label),
+      periodChip(x),
       rv ? h("span",{class:"badge reviewed",text:"✓ Reviewed by the community panel"}) : null,
       (()=>{ const c=consensus(x.sign_id); return c && c.top.id===x.id && c.n>0 && c.count>1 ? h("span",{class:"badge reviewed",text:"Most recognised"}) : null; })(),
       pendingBadge(x)),
@@ -461,6 +518,7 @@ function go(v){ view=v; armed=null; if(v!=="practise") revealed=false; render();
 function openSign(id){ currentSignId=id; go("sign"); }
 document.querySelectorAll("[data-view]").forEach(b=>b.addEventListener("click",e=>{ e.preventDefault(); go(b.dataset.view); }));
 $("#sortBy").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
+$("#contestedOnly").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
 $("#videoOnly").addEventListener("change",()=>{ if(view!=="browse") view="browse"; render(); });
 $("#search").addEventListener("input",e=>{ query=e.target.value; if(view!=="browse") view="browse"; render(); });
 document.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",()=>b.closest("dialog").close()));
@@ -618,7 +676,7 @@ $("#versionForm").addEventListener("submit",async e=>{
     let media_path=null;
     if(f && (k==="video"||k==="image")){ msg.textContent="Uploading…"; media_path=await upload(f,k); }
     msg.textContent="Saving…";
-    versions.push(await insert("versions",{sign_id:versionSign.id, kind:k, media_path, url:k==="link"?url:"", description:desc}));
+    versions.push(await insert("versions",{sign_id:versionSign.id, kind:k, media_path, url:k==="link"?url:"", description:desc, ...eraFields("v")}));
     $("#versionDialog").close(); render(); setStatus("Thanks for adding your version."+stillPending(),"info");
   }catch(err){ msg.dataset.tone=""; msg.textContent=writeError(err); }
   finally{ btn.disabled=false; }
@@ -656,8 +714,8 @@ $("#quickForm").addEventListener("submit",async e=>{
   try{
     let sign=findSign(gloss,region);
     if(!sign){ sign=await insert("signs",{gloss, meaning:"", region}); signs.push(sign); }
-    versions.push(await insert("versions",{sign_id:sign.id, kind:"link", url, description:""}));
-    if(story) stories.push(await insert("stories",{sign_id:sign.id, kind:$("#qKind").value, body:story, link:url}));
+    versions.push(await insert("versions",{sign_id:sign.id, kind:"link", url, description:"", ...eraFields("q")}));
+    if(story) stories.push(await insert("stories",{sign_id:sign.id, kind:$("#qKind").value, body:story, link:url, ...eraFields("q")}));
     $("#quickDialog").close(); openSign(sign.id); setStatus("Thanks for sharing."+stillPending(),"info");
   }catch(err){ msg.dataset.tone=""; msg.textContent=writeError(err); }
   finally{ btn.disabled=false; }
@@ -680,7 +738,7 @@ $("#storyForm").addEventListener("submit",async e=>{
     let video_path=null;
     if(f){ msg.textContent="Uploading video…"; video_path=await upload(f,"video"); }
     msg.textContent="Saving…";
-    stories.push(await insert("stories",{sign_id:storySign.id, kind, body, video_path, link, hook:$("#tHook").value.trim(), source:$("#tSource").value.trim()}));
+    stories.push(await insert("stories",{sign_id:storySign.id, kind, body, video_path, link, hook:$("#tHook").value.trim(), source:$("#tSource").value.trim(), ...eraFields("t")}));
     $("#storyDialog").close(); render(); setStatus("Thanks for sharing this story."+stillPending(),"info");
   }catch(err){ msg.dataset.tone=""; msg.textContent=writeError(err); }
   finally{ btn.disabled=false; }
